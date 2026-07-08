@@ -17,6 +17,6 @@ A browser-based dashboard for analyzing environmental sensor data from Arduino-s
 
 The uploaded CSV should use these columns:
 
-```csv
-timestamp,temperatureC,humidity,soilPH,airQuality
+csv
+timestamp, temperature C, humidity, soil pH, air quality
 2026-07-01 08:00,22.4,61,6.7,42
