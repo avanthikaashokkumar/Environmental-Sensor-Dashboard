@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Environmental Sensor Dashboard</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4faf7;
+      color: #18332f;
+    }
+
+    header {
+      padding: 40px 8%;
+      background: linear-gradient(135deg, #e6f7ef, #e9f2ff);
+      border-bottom: 1px solid #d8e7e1;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 42px;
+    }
+
+    p {
+      color: #5d706b;
+      line-height: 1.6;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: 330px 1fr;
+      gap: 24px;
+      padding: 24px 8%;
+    }
+
+    .panel,
+    .metric,
+    .card {
+      background: white;
+      border: 1px solid #d8e7e1;
+      border-radius: 12px;
+      padding: 18px;
+      box-shadow: 0 14px 30px rgba(24, 51, 47, 0.08);
+    }
+
+    label {
+      display: block;
+      margin-top: 16px;
+      font-weight: 700;
+    }
+
+    input,
+    select,
+    button {
+      width: 100%;
+      margin-top: 8px;
+      padding: 11px;
+      border-radius: 9px;
+      border: 1px solid #c8d8d2;
+      font: inherit;
+    }
+
+    button {
+      background: #167a5b;
+      color: white;
+      border: none;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: #2563eb;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .metric span {
+      display: block;
+      color: #5d706b;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 8px;
+      font-size: 28px;
+    }
+
+    canvas {
+      width: 100%;
+      height: 360px;
+      border: 1px solid #d8e7e1;
+      border-radius: 12px;
+      background: #fbfffd;
+    }
+
+    .alerts {
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .alert {
+      padding: 12px;
+      border-radius: 10px;
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #9a3412;
+    }
+
+    .healthy {
+      padding: 12px;
+      border-radius: 10px;
+      background: #ecfdf5;
+      border: 1px solid #bbf7d0;
+      color: #047857;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+
+    th,
+    td {
+      padding: 11px;
+      border-bottom: 1px solid #e3eee9;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      color: #5d706b;
+      text-transform: uppercase;
+      font-size: 12px;
+    }
+
+    .tag {
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .good {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .watch {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .risk {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    footer {
+      text-align: center;
+      color: #5d706b;
+      padding: 24px;
+    }
+
+    @media (max-width: 900px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      .metrics {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .metrics {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 34px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Environmental Sensor Dashboard</h1>
+    <p>
+      A data dashboard for exploring soil pH, air quality, temperature, and humidity readings
+      from environmental monitoring or Arduino-style sensor projects.
+    </p>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Controls</h2>
+      <p>Upload a CSV or use the built-in sample dataset.</p>
+
+      <label for="csvInput">Upload CSV</label>
+      <input id="csvInput" type="file" accept=".csv" />
+
+      <button id="sampleBtn">Load Sample Sensor Data</button>
+
+      <label for="metricSelect">Chart Metric</label>
+      <select id="metricSelect">
+        <option value="soilPH">Soil pH</option>
+        <option value="temperatureC">Temperature Celsius</option>
+        <option value="humidity">Humidity Percent</option>
+        <option value="airQuality">Air Quality Index</option>
+      </select>
+
+      <label for="phMin">Minimum Healthy Soil pH</label>
+      <input id="phMin" type="number" step="0.1" value="5.8" />
+
+      <label for="phMax">Maximum Healthy Soil pH</label>
+      <input id="phMax" type="number" step="0.1" value="7.5" />
+
+      <label for="aqLimit">Air Quality Warning Limit</label>
+      <input id="aqLimit" type="number" value="100" />
+
+      <button id="analyzeBtn" class="secondary">Analyze Data</button>
+
+      <p id="statusText">Sample data is loaded by default.</p>
+    </section>
+
+    <section>
+      <div class="metrics">
+        <div class="metric">
+          <span>Total Readings</span>
+          <strong id="totalReadings">0</strong>
+        </div>
+        <div class="metric">
+          <span>Average Soil pH</span>
+          <strong id="avgPH">0</strong>
+        </div>
+        <div class="metric">
+          <span>Average Temp</span>
+          <strong id="avgTemp">0</strong>
+        </div>
+        <div class="metric">
+          <span>Alerts</span>
+          <strong id="alertCount">0</strong>
+        </div>
+      </div>
+
+      <section class="card">
+        <h2>Sensor Trend</h2>
+        <canvas id="chart"></canvas>
+      </section>
+
+      <section class="card" style="margin-top: 18px;">
+        <h2>Environmental Alerts</h2>
+        <div id="alerts" class="alerts"></div>
+      </section>
+
+      <section class="card" style="margin-top: 18px;">
+        <h2>Sensor Readings</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Temp C</th>
+              <th>Humidity</th>
+              <th>Soil pH</th>
+              <th>Air Quality</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </section>
+    </section>
+  </main>
+
+  <footer>
+    <p>Built as an environmental biotechnology, Arduino, and data visualization portfolio project.</p>
+  </footer>
+
+  <script>
+    const sampleCSV = `timestamp,temperatureC,humidity,soilPH,airQuality
+2026-07-01 08:00,22.4,61,6.7,42
+2026-07-01 10:00,24.1,58,6.6,46
+2026-07-01 12:00,27.8,52,6.4,59
+2026-07-01 14:00,30.2,47,6.1,76
+2026-07-01 16:00,29.6,50,5.7,94
+2026-07-01 18:00,26.8,55,5.5,112
+2026-07-02 08:00,21.9,64,5.6,88
+2026-07-02 10:00,23.5,62,5.9,70
+2026-07-02 12:00,26.9,54,6.3,61
+2026-07-02 14:00,31.1,46,7.8,128
+2026-07-02 16:00,30.4,49,7.6,116
+2026-07-02 18:00,27.2,53,7.2,82`;
+
+    let readings = [];
+
+    const csvInput = document.getElementById("csvInput");
+    const sampleBtn = document.getElementById("sampleBtn");
+    const analyzeBtn = document.getElementById("analyzeBtn");
+    const metricSelect = document.getElementById("metricSelect");
+
+    csvInput.addEventListener("change", handleCSVUpload);
+    sampleBtn.addEventListener("click", loadSampleData);
+    analyzeBtn.addEventListener("click", analyzeData);
+    metricSelect.addEventListener("change", analyzeData);
+
+    function handleCSVUpload(event) {
+      const file = event.target.files[0];
+
+      if (!file) {
+        return;
+      }
+
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        try {
+          readings = parseCSV(reader.result);
+          document.getElementById("statusText").textContent =
+            "Uploaded CSV loaded successfully.";
+          analyzeData();
+        } catch (error) {
+          document.getElementById("statusText").textContent =
+            "Could not read CSV. Make sure the columns match the required format.";
+        }
+      };
+
+      reader.readAsText(file);
+    }
+
+    function loadSampleData() {
+      readings = parseCSV(sampleCSV);
+      document.getElementById("statusText").textContent =
+        "Sample sensor dataset loaded.";
+      analyzeData();
+    }
+
+    function parseCSV(csvText) {
+      const lines = csvText.trim().split("\n");
+      const headers = lines[0].split(",").map(header => header.trim());
+
+      return lines.slice(1).map(line => {
+        const values = line.split(",").map(value => value.trim());
+        const row = {};
+
+        headers.forEach((header, index) => {
+          row[header] = values[index];
+        });
+
+        return {
+          timestamp: row.timestamp,
+          temperatureC: Number(row.temperatureC),
+          humidity: Number(row.humidity),
+          soilPH: Number(row.soilPH),
+          airQuality: Number(row.airQuality)
+        };
+      }).filter(row =>
+        row.timestamp &&
+        !Number.isNaN(row.temperatureC) &&
+        !Number.isNaN(row.humidity) &&
+        !Number.isNaN(row.soilPH) &&
+        !Number.isNaN(row.airQuality)
+      );
+    }
+
+    function analyzeData() {
+      if (!readings.length) {
+        document.getElementById("statusText").textContent =
+          "No data available. Load sample data or upload a CSV.";
+        return;
+      }
+
+      const phMin = Number(document.getElementById("phMin").value);
+      const phMax = Number(document.getElementById("phMax").value);
+      const aqLimit = Number(document.getElementById("aqLimit").value);
+
+      const avgPH = average(readings.map(row => row.soilPH));
+      const avgTemp = average(readings.map(row => row.temperatureC));
+      const alerts = buildAlerts(readings, phMin, phMax, aqLimit);
+
+      document.getElementById("totalReadings").textContent = readings.length;
+      document.getElementById("avgPH").textContent = avgPH.toFixed(2);
+      document.getElementById("avgTemp").textContent = avgTemp.toFixed(1) + "°C";
+      document.getElementById("alertCount").textContent = alerts.length;
+
+      renderChart();
+      renderAlerts(alerts);
+      renderTable(phMin, phMax, aqLimit);
+    }
+
+    function average(values) {
+      return values.reduce((sum, value) => sum + value, 0) / values.length;
+    }
+
+    function buildAlerts(data, phMin, phMax, aqLimit) {
+      const alerts = [];
+
+      data.forEach(row => {
+        if (row.soilPH < phMin) {
+          alerts.push(`${row.timestamp}: Soil pH is acidic at ${row.soilPH}.`);
+        }
+
+        if (row.soilPH > phMax) {
+          alerts.push(`${row.timestamp}: Soil pH is alkaline at ${row.soilPH}.`);
+        }
+
+        if (row.airQuality > aqLimit) {
+          alerts.push(`${row.timestamp}: Air quality reading is elevated at ${row.airQuality}.`);
+        }
+      });
+
+      return alerts;
+    }
+
+    function renderAlerts(alerts) {
+      const alertsBox = document.getElementById("alerts");
+
+      if (!alerts.length) {
+        alertsBox.innerHTML = `
+          <div class="healthy">
+            No environmental warnings detected with the current thresholds.
+          </div>
+        `;
+        return;
+      }
+
+      alertsBox.innerHTML = alerts.map(alert => `
+        <div class="alert">${alert}</div>
+      `).join("");
+    }
+
+    function getRowStatus(row, phMin, phMax, aqLimit) {
+      const phRisk = row.soilPH < phMin || row.soilPH > phMax;
+      const airRisk = row.airQuality > aqLimit;
+
+      if (phRisk && airRisk) {
+        return { label: "Risk", className: "risk" };
+      }
+
+      if (phRisk || airRisk) {
+        return { label: "Watch", className: "watch" };
+      }
+
+      return { label: "Good", className: "good" };
+    }
+
+    function renderTable(phMin, phMax, aqLimit) {
+      const tableBody = document.getElementById("tableBody");
+
+      tableBody.innerHTML = readings.map(row => {
+        const status = getRowStatus(row, phMin, phMax, aqLimit);
+
+        return `
+          <tr>
+            <td>${row.timestamp}</td>
+            <td>${row.temperatureC.toFixed(1)}</td>
+            <td>${row.humidity.toFixed(0)}%</td>
+            <td>${row.soilPH.toFixed(1)}</td>
+            <td>${row.airQuality.toFixed(0)}</td>
+            <td><span class="tag ${status.className}">${status.label}</span></td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function renderChart() {
+      const metric = metricSelect.value;
+      const canvas = document.getElementById("chart");
+      const ctx = canvas.getContext("2d");
+
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+
+      canvas.width = width;
+      canvas.height = height;
+
+      ctx.clearRect(0, 0, width, height);
+
+      const values = readings.map(row => row[metric]);
+      const minValue = Math.min(...values);
+      const maxValue = Math.max(...values);
+      const padding = 50;
+
+      ctx.fillStyle = "#fbfffd";
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.strokeStyle = "#b8cbc4";
+      ctx.lineWidth = 1;
+
+      ctx.beginPath();
+      ctx.moveTo(padding, 20);
+      ctx.lineTo(padding, height - padding);
+      ctx.lineTo(width - 20, height - padding);
+      ctx.stroke();
+
+      ctx.fillStyle = "#5d706b";
+      ctx.font = "12px Arial";
+      ctx.fillText(getMetricLabel(metric), padding, 16);
+      ctx.fillText("Reading order", width - 110, height - 16);
+
+      if (values.length < 2) {
+        return;
+      }
+
+      const range = maxValue - minValue || 1;
+
+      ctx.strokeStyle = "#167a5b";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+
+      values.forEach((value, index) => {
+        const x = padding + (index / (values.length - 1)) * (width - padding - 30);
+        const y = 25 + (1 - ((value - minValue) / range)) * (height - padding - 45);
+
+        if (index === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      });
+
+      ctx.stroke();
+
+      values.forEach((value, index) => {
+        const x = padding + (index / (values.length - 1)) * (width - padding - 30);
+        const y = 25 + (1 - ((value - minValue) / range)) * (height - padding - 45);
+
+        ctx.beginPath();
+        ctx.arc(x, y, 5, 0, Math.PI * 2);
+        ctx.fillStyle = "#2563eb";
+        ctx.fill();
+      });
+
+      ctx.fillStyle = "#5d706b";
+      ctx.fillText(maxValue.toFixed(1), 8, 32);
+      ctx.fillText(minValue.toFixed(1), 8, height - padding);
+    }
+
+    function getMetricLabel(metric) {
+      const labels = {
+        soilPH: "Soil pH",
+        temperatureC: "Temperature Celsius",
+        humidity: "Humidity Percent",
+        airQuality: "Air Quality Index"
+      };
+
+      return labels[metric];
+    }
+
+    loadSampleData();
+  </script>
+</body>
+</html>
